@@ -18,13 +18,12 @@ bibliography: references.bib
 #| message: false
 library(readr)
 library(tidyverse)
-
 clean <-read_csv("../data/analysis_data/cleaned_data.csv")
 raw<-read_csv("../data/usa_00001.csv")
 ```
 
 # Introduction 
-Our data is obtained from [@ipums2022]. The dataset was cleaned and processed using R [@citeR], with help of packages tidyverse [@tidyverse], readr[@readr]. The cleaning process involved removing any unnecessary variables, and calculating the LaPlace estimations.
+Our data is obtained from [@ipums2022]. The dataset was cleaned and processed using R [@citeR], with help of packages readr[@readr] and tidyverse [@tidyverse]. The cleaning process involved removing any unnecessary variables, and calculating the LaPlace estimations.
 
 ## Instructions for Extracting Data from IPUMS USA
 1. Access the IPUMS USA Website
