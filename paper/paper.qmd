@@ -1,13 +1,12 @@
 ---
-title: "My title"
-subtitle: "My subtitle if needed"
+title: "US. Doctoral Respondents Estimation through 2022 ACS"
 author: 
-  - First author
-  - Another author
-thanks: "Code and data are available at: [https://github.com/RohanAlexander/starter_folder](https://github.com/RohanAlexander/starter_folder)."
+  - Ariel Xing
+  - Haoan Wang
+thanks: "Code and data are available at: https://github.com/Jiaqi-Xing/US_Doctoral_Analysis."
 date: today
 date-format: long
-abstract: "First sentence. Second sentence. Third sentence. Fourth sentence."
+abstract: ""
 format: pdf
 number-sections: true
 bibliography: references.bib
@@ -17,238 +16,86 @@ bibliography: references.bib
 #| include: false
 #| warning: false
 #| message: false
-
+library(readr)
 library(tidyverse)
-library(palmerpenguins)
+
+clean <-read_csv("../data/analysis_data/cleaned_data.csv")
+raw<-read_csv("../data/usa_00001.csv")
+```
+
+# Introduction 
+Our data is obtained from [@ipums2022]. The dataset was cleaned and processed using R [@citeR], with help of packages tidyverse [@tidyverse], readr[@readr]. The cleaning process involved removing any unnecessary variables, and calculating the LaPlace estimations.
+
+## Instructions for Extracting Data from IPUMS USA
+1. Access the IPUMS USA Website
+  Visit IPUMS USA.
+2. Search for Variables
+   In the search bar, enter the following variables one at a time:
+   EDUC (Education)
+   SEX (Gender)
+   STATEICP (State, using the ICP coding system)
+3. Add Variables to Your Cart
+   After searching for each variable, select it and add it to your cart.
+4. Create Data Extract
+   Once all desired variables are in your cart, proceed to create the data extract.
+5. Change Data Format
+   In the extract request page, select CSV as the data format. This will make it easier for you to work with the data.
+6. Submit Your Request
+   Review your selections and submit the data extract request.
+7. Download Your Data
+   After your request is processed, navigate to the download page at Download Data. Locate your data file, which will be named usa_00001.csv, and download it.
+
+# Overview of Ratio Estimator
+First, we start with the how many respondents have a doctor degree as their highest educational attainment for each state. See "Table 1" for overview.
+```{r}
+#| label: dc_overview
+#| fig-cap: 'Table 1: Sample of doctor degree for each state'
+#| echo: false
+# use 'knitr' generate a table of cleaned data for overview
+knitr::kable(head(clean[, 1:2]), "simple",   col.names = c('ID', 'Counts'))
+
 ```
 
 
-# Introduction
-
-Overview paragraph
-
-Estimand paragraph
-
-Results paragraph
-
-Why it matters paragraph
-
-Telegraphing paragraph: The remainder of this paper is structured as follows. @sec-data....
-
-
-
-
-
-
-# Data {#sec-data}
-
-## Overview
-
-We use the statistical programming language R [@citeR].... Our data [@shelter].... Following @tellingstories, we consider...
-
-Overview text
-
-## Measurement
-	
-Some paragraphs about how we go from a phenomena in the world to an entry in the dataset.
-
-## Outcome variables
-
-Add graphs, tables and text. Use sub-sub-headings for each outcome variable or update the subheading to be singular.
-
-
-
-Some of our data is of penguins (@fig-bills), from @palmerpenguins.
+Then, we find the ratio for California, which has the ID 71 given by codebook. After that we calculate the ratio of doctoral degree respondents to total respondents in California by number of respondents with doctoral degrees in California divided by total number of respondents in California, which is given by the teacher(391,171). Then, use the ratio, we can calculate the number of respondents for every state by number of doctor degree divided by the ratio. See table 2 for overview of the estimated total respondents.
 
 ```{r}
-#| label: fig-bills
-#| fig-cap: Bills of penguins
+#| label: dc_estimate
+#| fig-cap: 'Table 2: Sample of doctor degree for each state'
 #| echo: false
-
-ggplot(penguins, aes(x = island, fill = species)) +
-  geom_bar(alpha = 0.8) +
-  scale_fill_manual(values = c("darkorange","purple","cyan4"),
-                    guide = "none") +
-  theme_minimal() +
-  facet_wrap(~species, ncol = 1) +
-  coord_flip()
+doctoral_degrees_california <- clean %>%
+  filter(STATEICP == 71) %>%
+  pull(respondents) 
+total_respondents_california <- 391171
+ratio_california <- doctoral_degrees_california / total_respondents_california
+state_edu_data <- clean %>%
+  mutate(estimated_total_respondents = respondents / ratio_california)
+knitr::kable(head(state_edu_data[, 1:3]), "simple",   col.names = c('ID', 'Counts','Estimated'))
 ```
 
-Talk more about it.
-
-And also planes (@fig-planes). (You can change the height and width, but don't worry about doing that until you have finished every other aspect of the paper - Quarto will try to make it look nice and the defaults usually work well once you have enough text.)
-
+Then we compare with the actual number.
 ```{r}
-#| label: fig-planes
-#| fig-cap: Relationship between wing length and width
+#| label: dc_compare
+#| fig-cap: 'Table 3: Sample of estimate v.s. actula'
 #| echo: false
-#| warning: false
-#| message: false
+actual_respondents <- raw %>%
+  group_by(STATEICP) %>%
+  summarise(actual_total_respondents = n())
+comparison_data <- state_edu_data %>%
+  left_join(actual_respondents, by = "STATEICP") 
 
-analysis_data <- read_csv(here::here("data/02-analysis_data/analysis_data.csv"))
-
-analysis_data |> 
-  ggplot(aes(x = width, y = length)) +
-  geom_point(alpha = 0.8) +
-  theme_minimal() +
-  labs(x = "Wing width (mm)",
-       y = "Wing length (mm)")
+# Step 3: Calculate the difference between estimated and actual respondents
+comparison_data <- comparison_data %>%
+ select(STATEICP, respondents, estimated_total_respondents, actual_total_respondents)
+knitr::kable(head(comparison_data[, 1:4]), "simple",   col.names = c('ID', 'Counts','Estimated','Actual'))
+  
 ```
 
-Talk way more about it. 
-
-## Predictor variables
-
-Add graphs, tables and text.
-
-Use sub-sub-headings for each outcome variable and feel free to combine a few into one if they go together naturally.
-
-
-
-
-
-
-
-
-# Model
-
-The goal of our modelling strategy is twofold. Firstly,...
-
-Here we briefly describe the Bayesian analysis model used to investigate... Background details and diagnostics are included in [Appendix -@sec-model-details].
-
-## Model set-up
-
-Define $y_i$ as the number of seconds that the plane remained aloft. Then $\beta_i$ is the wing width and $\gamma_i$ is the wing length, both measured in millimeters.  
-
-\begin{align} 
-y_i|\mu_i, \sigma &\sim \mbox{Normal}(\mu_i, \sigma) \\
-\mu_i &= \alpha + \beta_i + \gamma_i\\
-\alpha &\sim \mbox{Normal}(0, 2.5) \\
-\beta &\sim \mbox{Normal}(0, 2.5) \\
-\gamma &\sim \mbox{Normal}(0, 2.5) \\
-\sigma &\sim \mbox{Exponential}(1)
-\end{align}
-
-We run the model in R [@citeR] using the `rstanarm` package of @rstanarm. We use the default priors from `rstanarm`.
-
-
-### Model justification
-
-We expect a positive relationship between the size of the wings and time spent aloft. In particular...
-
-We can use maths by including latex between dollar signs, for instance $\theta$.
-
-
-# Results
-
-Our results are summarized in @tbl-modelresults.
-
-```{r}
-#| echo: false
-#| eval: true
-#| warning: false
-#| message: false
-
-library(rstanarm)
-
-first_model <-
-  readRDS(file = here::here("models/first_model.rds"))
-```
-
-```{r}
-#| echo: false
-#| eval: true
-#| label: tbl-modelresults
-#| tbl-cap: "Explanatory models of flight time based on wing width and wing length"
-#| warning: false
-
-modelsummary::modelsummary(
-  list(
-    "First model" = first_model
-  ),
-  statistic = "mad",
-  fmt = 2
-)
-```
-
-
-
-
-# Discussion
-
-## First discussion point {#sec-first-point}
-
-If my paper were 10 pages, then should be be at least 2.5 pages. The discussion is a chance to show off what you know and what you learnt from all this. 
-
-## Second discussion point
-
-Please don't use these as sub-heading labels - change them to be what your point actually is.
-
-## Third discussion point
-
-## Weaknesses and next steps
-
-Weaknesses and next steps should also be included.
-
-\newpage
-
-\appendix
-
-# Appendix {-}
-
-
-# Additional data details
-
-# Model details {#sec-model-details}
-
-## Posterior predictive check
-
-In @fig-ppcheckandposteriorvsprior-1 we implement a posterior predictive check. This shows...
-
-In @fig-ppcheckandposteriorvsprior-2 we compare the posterior with the prior. This shows... 
-
-```{r}
-#| eval: true
-#| echo: false
-#| message: false
-#| warning: false
-#| label: fig-ppcheckandposteriorvsprior
-#| layout-ncol: 2
-#| fig-cap: "Examining how the model fits, and is affected by, the data"
-#| fig-subcap: ["Posterior prediction check", "Comparing the posterior with the prior"]
-
-pp_check(first_model) +
-  theme_classic() +
-  theme(legend.position = "bottom")
-
-posterior_vs_prior(first_model) +
-  theme_minimal() +
-  scale_color_brewer(palette = "Set1") +
-  theme(legend.position = "bottom") +
-  coord_flip()
-```
-
-## Diagnostics
-
-@fig-stanareyouokay-1 is a trace plot. It shows... This suggests...
-
-@fig-stanareyouokay-2 is a Rhat plot. It shows... This suggests...
-
-```{r}
-#| echo: false
-#| eval: true
-#| message: false
-#| warning: false
-#| label: fig-stanareyouokay
-#| fig-cap: "Checking the convergence of the MCMC algorithm"
-#| fig-subcap: ["Trace plot", "Rhat plot"]
-#| layout-ncol: 2
-
-plot(first_model, "trace")
-
-plot(first_model, "rhat")
-```
-
+# Explaination of Difference
+The Laplace ratio estimator is based on the ratio of doctoral degree holders in California to the total respondents in California, applied to other states. This method assumes that the proportion of doctoral degree holders is similar across states, which may not always be true. 
+Each state has different demographics, education systems, and labor markets, leading to variations in educational attainment levels. For instance, states with a higher concentration of research institutions or universities may have more doctoral degree holders.
+If certain respondents in a state did not report their education level, this could lead to undercounts in the actual totals.
+The estimation assumes that the ratio of doctoral degree holders to total respondents is consistent across states. If certain states have unique educational trends or policies affecting the attainment of doctoral degrees, the estimate may not hold true.
 
 
 \newpage
